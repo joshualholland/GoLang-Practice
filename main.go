@@ -1,92 +1,118 @@
 package main
 
 import (
-	"database/sql"
-	"fmt"
-	"log"
-	"net/http"
-	"os"
+	"example/hello/controllers"
+	"example/hello/initializers"
+	"example/hello/middleware"
+
+	// "example/hello/models"
+	// "log"
+	// "net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
-	_ "github.com/lib/pq"
 )
 
-var db *sql.DB
-
-type person struct {
-	Firstname *string `json:"firstname"`
-	Lastname  *string `json:"lastname"`
-	ID        int     `json:"id"`
-	Birthday  *string `json:"birthday"`
+func init() {
+	initializers.LoadEnvVars()
+	initializers.ConnectToDB()
+	initializers.SyncDatabase()
 }
 
 func main() {
-	godotenv.Load()
+	r := gin.Default()
+	r.POST("/register", controllers.Register)
+	r.POST("/login", controllers.Login)
+	r.GET("/validate", middleware.RequireAuth, controllers.Validate)
+	r.Run("localhost:8080")
+	// database.ConnectToDB()
 
-	psqlconn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", os.Getenv("HOST"), os.Getenv("PORT"), os.Getenv("USER"), os.Getenv("PASSWORD"), os.Getenv("DBNAME"))
+	// router := gin.Default()
+	// router.GET("/users", getUsers)
+	// router.GET("/users/:id", getUser)
+	// router.POST("/users", createUser)
+	// router.PUT("/users/:id", updateUser)
+	// router.DELETE("/users/:id", deleteUser)
 
-	var err error
-	db, err = sql.Open("postgres", psqlconn)
-	CheckErr(err)
-
-	router := gin.Default()
-	router.GET("/people", getPeople)
-	router.POST("/people", createPeople)
-
-	router.Run("localhost:8080")
+	// router.Run("localhost:8080")
 }
 
-func CheckErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
+// func getUsers(c *gin.Context) {
+// 	c.Header("Content-Type", "application/json")
 
-func getPeople(c *gin.Context) {
-	c.Header("Content-Type", "application/json")
+// 	rows, err := initializers.DB.Query("SELECT id, username, password FROM users")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer rows.Close()
 
-	rows, err := db.Query("SELECT id, firstname, lastname, birthday FROM people")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
+// 	var user []models.User
+// 	for rows.Next() {
+// 		var u models.User
+// 		err := rows.Scan(&u.ID, &u.Username, &u.Password)
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		user = append(user, u)
+// 	}
+// 	err = rows.Err()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-	var people []person
-	for rows.Next() {
-		var p person
-		err := rows.Scan(&p.ID, &p.Firstname, &p.Lastname, &p.Birthday)
-		if err != nil {
-			log.Fatal(err)
-		}
-		people = append(people, p)
-	}
-	err = rows.Err()
-	if err != nil {
-		log.Fatal(err)
-	}
+// 	c.IndentedJSON(http.StatusOK, user)
+// }
 
-	c.IndentedJSON(http.StatusOK, people)
-}
+// func getUser(c *gin.Context) {
+// 	id := c.Param("id")
+// 	sqlStatement := `SELECT * FROM users WHERE id=$1;`
+// 	rows, err := db.Query(sqlStatement, id)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer rows.Close()
+// 	err = rows.Err()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
 
-func createPeople(c *gin.Context) {
+// 	c.IndentedJSON(http.StatusOK, rows)
+// }
 
-	var newPerson person
-	if err := c.BindJSON(&newPerson); err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-		log.Println(err)
-		return
-	}
+// func createUser(c *gin.Context) {
 
-	stmt, err := db.Prepare("INSERT INTO people (firstname, lastname, id, birthday) VALUES ($1, $2, $3, $4)")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close()
+// 	var newUser models.User
+// 	if err := c.BindJSON(&newUser); err != nil {
+// 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+// 		log.Println(err)
+// 		return
+// 	}
 
-	if _, err := stmt.Exec(newPerson.Firstname, newPerson.Lastname, newPerson.ID, newPerson.Birthday); err != nil {
-		log.Fatal(err)
-	}
+// 	stmt, err := db.Prepare("INSERT INTO people (username, id, password) VALUES ($1, $2, $3)")
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	defer stmt.Close()
 
-	c.JSON(http.StatusCreated, newPerson)
-}
+// 	if _, err := stmt.Exec(newUser.Username, newUser.Password, newUser.ID); err != nil {
+// 		log.Fatal(err)
+// 	}
+
+// 	c.JSON(http.StatusCreated, newUser)
+// }
+
+// func updateUser(c *gin.Context) {
+// 	id := c.Param("id")
+
+// 	var updatedUser models.User
+
+// 	if err := c.ShouldBindJSON(&updatedUser); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+// 		return
+// 	}
+
+// 	c.JSON(http.StatusNotFound, gin.H{"message": "User not found"})
+// }
+
+// func deleteUser(c *gin.Context) {
+
+// }
