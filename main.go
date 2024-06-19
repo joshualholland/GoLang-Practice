@@ -19,5 +19,6 @@ func main() {
 	r.POST("/register", controllers.Register)
 	r.POST("/login", controllers.Login)
 	r.GET("/validate", middleware.RequireAuth, controllers.Validate)
+	r.GET("/driver/:id", middleware.RequireAuth, controllers.GetDriver)
 	r.Run("localhost:8080")
 }
